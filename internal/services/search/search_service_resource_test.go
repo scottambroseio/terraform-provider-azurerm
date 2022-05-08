@@ -15,6 +15,22 @@ import (
 
 type SearchServiceResource struct{}
 
+func TestAccSearchService_free(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_search_service", "test")
+	r := SearchServiceResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			Config: r.free(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("tags.%").HasValue("1"),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
 func TestAccSearchService_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_search_service", "test")
 	r := SearchServiceResource{}
@@ -169,6 +185,30 @@ func (t SearchServiceResource) Exists(ctx context.Context, clients *clients.Clie
 	}
 
 	return utils.Bool(resp.ServiceProperties != nil), nil
+}
+
+func (SearchServiceResource) free(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "test" {
+  name     = "acctestRG-%d"
+  location = "%s"
+}
+
+resource "azurerm_search_service" "test" {
+  name                = "acctestsearchservice%d"
+  resource_group_name = azurerm_resource_group.test.name
+  location            = azurerm_resource_group.test.location
+  sku                 = "free"
+
+  tags = {
+    environment = "staging"
+  }
+}
+`, data.RandomInteger, data.Locations.Primary, data.RandomInteger)
 }
 
 func (SearchServiceResource) basic(data acceptance.TestData) string {

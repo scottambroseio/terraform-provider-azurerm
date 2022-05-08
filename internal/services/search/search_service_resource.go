@@ -160,11 +160,6 @@ func resourceSearchServiceCreateUpdate(d *pluginsdk.ResourceData, meta interface
 		publicNetworkAccess = search.Disabled
 	}
 
-	expandedIdentity, err := expandSearchServiceIdentity(d.Get("identity").([]interface{}))
-	if err != nil {
-		return fmt.Errorf("expanding `identity`: %+v", err)
-	}
-
 	properties := search.Service{
 		Location: utils.String(location),
 		Sku: &search.Sku{
@@ -176,8 +171,16 @@ func resourceSearchServiceCreateUpdate(d *pluginsdk.ResourceData, meta interface
 				IPRules: expandSearchServiceIPRules(d.Get("allowed_ips").([]interface{})),
 			},
 		},
-		Identity: expandedIdentity,
-		Tags:     tags.Expand(d.Get("tags").(map[string]interface{})),
+		Tags: tags.Expand(d.Get("tags").(map[string]interface{})),
+	}
+
+	expandedIdentity, err := expandSearchServiceIdentity(d.Get("identity").([]interface{}))
+	if err != nil {
+		return fmt.Errorf("expanding `identity`: %+v", err)
+	}
+
+	if properties.Sku.Name != search.Free {
+		properties.Identity = expandedIdentity
 	}
 
 	if v, ok := d.GetOk("replica_count"); ok {
